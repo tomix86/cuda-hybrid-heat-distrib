@@ -1,4 +1,5 @@
 #include <sstream>
+#include <stdexcept>
 #include "kernel.hpp"
 #include "Mesh.hpp"
 
@@ -171,7 +172,7 @@ HybridCuda::HybridCuda(size_t divisionPoint, size_t pitch, int deviceId) :
 DIVISION_POINT(divisionPoint),
 pitch(pitch),
 deviceId(deviceId) {
-	part = deviceId == 0 ? Part::BOTTOM : Part::TOP;
+	part = (deviceId == 0 ? Part::BOTTOM : Part::TOP);
 
 	if (part == Part::BOTTOM) {
 		allocNumRows = MESH_SIZE_EXTENDED - (DIVISION_POINT - 1);
@@ -287,7 +288,7 @@ void HybridCuda::copyFinal(float* temperature_out) {
 		srcPtr = d_temperature_in;
 	}
 
-	checkCudaErrors(cudaMemcpy2D(dstPtr, pitch, srcPtr, d_pitch, MESH_SIZE_EXTENDED * sizeof(float), allocNumRows, cudaMemcpyDeviceToHost));
+	checkCudaErrors(cudaMemcpy2D(dstPtr, pitch, srcPtr, d_pitch, MESH_SIZE_EXTENDED * sizeof(float), allocNumRows - 1, cudaMemcpyDeviceToHost));
 }
 
 void HybridCuda::setDevice() {

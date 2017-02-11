@@ -67,7 +67,7 @@ public:
 		temperature = ContainerType(size, std::vector<float>(size, INITIAL_TEMP));
 	}
 
-	static float getTemperature(size_t x, size_t y) {
+	static float getTemperature(int x, int y) {
 		if (x < 0 || y < 0 || x >= temperature[0].size() || y >= temperature.size()) {
 			return ENVIRONMENT_TEMP;
 		}

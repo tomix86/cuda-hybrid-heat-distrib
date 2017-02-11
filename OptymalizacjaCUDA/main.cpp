@@ -9,8 +9,10 @@
 
 void cuda();
 
+float CPU_SHARE = 0.f;
+
 void init(int argc, const char* argv[]) {
-	if (argc < 5) {
+	if (argc < 6) {
 		std::cout << "Invalid number of arguments\n";
 		exit(-1);
 	}
@@ -25,6 +27,7 @@ void init(int argc, const char* argv[]) {
 	std::cout << "Single Allocation size will be: " << sizeof(float) * MESH_SIZE * MESH_SIZE / (1024 * 1024) << "MiB" << std::endl;
 	BLOCK_DIM_X = std::atoi(argv[4]);
 	BLOCK_DIM_Y = std::atoi(argv[5]);
+	CPU_SHARE = std::atof(argv[6]);
 }
 
 void basic() {
@@ -114,7 +117,8 @@ void optimized() {
 }
 
 size_t runBenchmark() {
-	size_t divisionPoint = MESH_SIZE_EXTENDED * 0.2f;
+//	size_t divisionPoint = MESH_SIZE_EXTENDED * 0.2f;
+	size_t divisionPoint = MESH_SIZE_EXTENDED * CPU_SHARE;
 	auto GPUShare = static_cast<float>(MESH_SIZE_EXTENDED - divisionPoint) / MESH_SIZE_EXTENDED; 
 	auto CPUShare = 1.f - GPUShare;
 
@@ -199,15 +203,10 @@ void hybrid() {
 
 		#pragma omp parallel
 		for (int step = 0; step < STEPS; ++step) {
-//			SimpleTimer t{ "GLOBAL Share" };
 			#pragma omp master
-			{
-	//			SimpleTimer t{ "launch compute" };
-				cuda.launchCompute(linearMesh_in);
-			}
+			cuda.launchCompute(linearMesh_in);
 
 			{
-	//			SimpleTimer t{ "CPU Share" };
 				#pragma omp for
 				for (int i = 0; i < DIVISION_POINT - 1; ++i) {
 					#pragma ivdep
@@ -310,6 +309,5 @@ int main(int argc, const char* argv[]) {
 //	hybrid_nested_parallelism();
 //	hybrid_cuda();
 
-	cudaDeviceReset();
 	return 0;
 }

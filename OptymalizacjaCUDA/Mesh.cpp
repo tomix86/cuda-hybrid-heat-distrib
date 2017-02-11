@@ -1,4 +1,5 @@
 #include "Mesh.hpp"
+#include <cmath>
 //externs
 size_t STEPS;
 size_t MESH_SIZE;
@@ -86,7 +87,7 @@ void validateResults(float** input) {
 		for (int i = 0; i < MESH_SIZE; ++i) {
 			for (int j = 0; j < MESH_SIZE; ++j) {
 				const float threshold = .001f;
-				if (fabs(Mesh::temperature[i][j] - input[i + 1][j + 1]) > threshold) {
+				if (std::fabs(Mesh::temperature[i][j] - input[i + 1][j + 1]) > threshold) {
 					std::cout << "Results are different for optimized version!\n"
 						<< "Mismatch for [" << i << "][" << j << "]: " << Mesh::temperature[i][j] << " vs " << input[i + 1][j + 1] << std::endl;
 					return;

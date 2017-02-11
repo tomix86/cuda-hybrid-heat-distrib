@@ -6,6 +6,8 @@
 /lib
 /bin
 /misc
+/obj
+/doc
 /build/src
 /build/linux/obj
 *.v12.suo
@@ -20,3 +22,4 @@ out.txt
 OptymalizacjaCuda/Release
 OptymalizacjaCuda/Debug
 OptymalizacjaCuda/x64
+OptymalizacjaCuda/bin
