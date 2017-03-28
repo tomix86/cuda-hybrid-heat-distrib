@@ -21,7 +21,7 @@ private:
 	float *d_temperature_in, *d_temperature_out;
 	int deviceId;
 
-	enum class Part { TOP, BOTTOM };
+	enum Part { TOP, BOTTOM };
 	Part part;
 
 	void setDevice();

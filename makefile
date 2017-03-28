@@ -14,9 +14,11 @@ CC_EXTENSIVE_ERRORS= -Werror -Wfatal-errors -Wall -Wextra -pedantic -pedantic-er
 -Wfloat-equal -Wstrict-aliasing=2 -Wredundant-decls -fno-omit-frame-pointer -ffloat-store \
 -fno-common -fstrict-aliasing -Winit-self
 
-CC=g++
+#CC=g++
+CC=/opt/intel-parallel-studio/bin/icc
 CC_DEBUG= -Og -ggdb3 -fopenmp
-CC_RELEASE= -O3 -fopenmp
+#CC_RELEASE= -O3 -fopenmp
+CC_RELEASE= -03 -openmp -vec-report3
 CCFLAGS=-std=c++0x $(CC_RELEASE)
 
 NVCC=nvcc

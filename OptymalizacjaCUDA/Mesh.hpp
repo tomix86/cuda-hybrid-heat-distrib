@@ -43,7 +43,7 @@ public:
 #endif
 
 		std::cout << "Execution of \"" << name << "\" took " << timeDiff << "ms" << std::endl;
-	//	std::cout << timeDiff << std::endl;
+	//	std::cout << timeDiff << " ";
 	}
 
 private:

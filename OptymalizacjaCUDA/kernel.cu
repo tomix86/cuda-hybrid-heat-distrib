@@ -1,12 +1,20 @@
+#include <cstdio>
 #include <sstream>
 #include <stdexcept>
 #include "kernel.hpp"
 #include "Mesh.hpp"
 
+static std::string to_string(cudaError_t error) {
+	char buf[256];
+	snprintf(buf, 256, "%d", error);
+	return buf;
+}
+
+
 class CudaError : public std::runtime_error {
 public:
 	CudaError(std::string source, cudaError_t errorCode) :
-		std::runtime_error( source + ": code" + std::to_string(errorCode) + ": " + cudaGetErrorString(errorCode) ) {
+		std::runtime_error( source + ": code" + to_string(errorCode) + ": " + cudaGetErrorString(errorCode) ) {
 	}
 };
 
@@ -21,8 +29,8 @@ void checkError(cudaError_t result, const char* calledFunc,  const char* file, i
 }
 
 __global__ void meshUpdateKernel(float* mesh_in, float* mesh_out, size_t pitch, unsigned size) {
-	const auto x = blockIdx.x * blockDim.x + threadIdx.x;
-	const auto y = blockIdx.y * blockDim.y + threadIdx.y;
+	const int x = blockIdx.x * blockDim.x + threadIdx.x;
+	const int y = blockIdx.y * blockDim.y + threadIdx.y;
 
 	if ( x > 0 && x < size - 1 && y > 0 && y < size - 1) {
 		const float t_left = *getElem(mesh_in, pitch, y, x - 1);
@@ -30,7 +38,7 @@ __global__ void meshUpdateKernel(float* mesh_in, float* mesh_out, size_t pitch, 
 		const float t_top = *getElem(mesh_in, pitch, y - 1, x); 
 		const float t_bottom = *getElem(mesh_in, pitch, y + 1, x);
 
-		const auto newTemperature = (t_left + t_right + t_top + t_bottom) / 4;
+		const float newTemperature = (t_left + t_right + t_top + t_bottom) / 4;
 		
 		*getElem(mesh_out, pitch, y, x) = newTemperature;
 	}
@@ -39,8 +47,8 @@ __global__ void meshUpdateKernel(float* mesh_in, float* mesh_out, size_t pitch, 
 
 // optimal block size is 128,1,1
 __global__ void meshUpdateKernel_opt1(float *mesh_in, float *mesh_out, size_t pitch, unsigned size) {
-	const auto x = blockIdx.x * blockDim.x + threadIdx.x;
-	const auto y = blockIdx.y * blockDim.y + threadIdx.y;
+	const int x = blockIdx.x * blockDim.x + threadIdx.x;
+	const int y = blockIdx.y * blockDim.y + threadIdx.y;
 
 	//TODO: switch to dynamic shared memory
 	__shared__ float shared[3][128 + 2];
@@ -78,7 +86,7 @@ __global__ void meshUpdateKernel_opt1(float *mesh_in, float *mesh_out, size_t pi
 		const float t_t = shared[0][threadIdx.x + 1];
 		const float t_b = shared[2][threadIdx.x + 1];
 
-		auto newTemperature = (t_l + t_r + t_b + t_t) / 4;
+		const float newTemperature = (t_l + t_r + t_b + t_t) / 4;
 
 //		printf("[%d,%d]: {%f;%f;%f;%f}: %f\n", x, y, t_l, t_r, t_t, t_b, newTemperature);
 
@@ -88,8 +96,6 @@ __global__ void meshUpdateKernel_opt1(float *mesh_in, float *mesh_out, size_t pi
 
 
 void cuda() {
-	cudaFuncSetCacheConfig(meshUpdateKernel, cudaFuncCache::cudaFuncCachePreferL1);
-
 	size_t pitch;
 	float *temperature = allocMeshLinear(pitch);
 	size_t d_pitch;
@@ -105,10 +111,10 @@ void cuda() {
 	}
 
 	try {
-		SimpleTimer t{ "CUDA implementation" };
+		SimpleTimer t( "CUDA implementation" );
 		dim3 blockSize(BLOCK_DIM_X, BLOCK_DIM_Y);
-		auto computedGridDimX = (MESH_SIZE_EXTENDED + blockSize.x - 1) / blockSize.x;
-		auto computedGridDimY = (MESH_SIZE_EXTENDED + blockSize.y - 1) / blockSize.y;
+		unsigned computedGridDimX = (MESH_SIZE_EXTENDED + blockSize.x - 1) / blockSize.x;
+		unsigned computedGridDimY = (MESH_SIZE_EXTENDED + blockSize.y - 1) / blockSize.y;
 		dim3 gridSize(computedGridDimX, computedGridDimY);
 
 		checkCudaErrors(cudaMemcpy2D(d_temperature_in, d_pitch, temperature, pitch, MESH_SIZE_EXTENDED * sizeof(float), MESH_SIZE_EXTENDED, cudaMemcpyHostToDevice));
@@ -150,8 +156,8 @@ void cuda() {
 //
 
 __global__ void meshUpdateKernel_hybrid(float* mesh_in, float* mesh_out, size_t pitch, unsigned size_x, unsigned size_y) {
-	const auto x = blockIdx.x * blockDim.x + threadIdx.x;
-	const auto y = blockIdx.y * blockDim.y + threadIdx.y;
+	const int x = blockIdx.x * blockDim.x + threadIdx.x;
+	const int y = blockIdx.y * blockDim.y + threadIdx.y;
 
 	if (x > 0 && x < size_x - 1 && y > 0 && y < size_y - 1) {
 		const float t_left = *getElem(mesh_in, pitch, y, x - 1);
@@ -159,7 +165,7 @@ __global__ void meshUpdateKernel_hybrid(float* mesh_in, float* mesh_out, size_t 
 		const float t_top = *getElem(mesh_in, pitch, y - 1, x);
 		const float t_bottom = *getElem(mesh_in, pitch, y + 1, x);
 
-		const auto newTemperature = (t_left + t_right + t_top + t_bottom) / 4;
+		const float newTemperature = (t_left + t_right + t_top + t_bottom) / 4;
 
 		*getElem(mesh_out, pitch, y, x) = newTemperature;
 
@@ -172,9 +178,9 @@ HybridCuda::HybridCuda(size_t divisionPoint, size_t pitch, int deviceId) :
 DIVISION_POINT(divisionPoint),
 pitch(pitch),
 deviceId(deviceId) {
-	part = (deviceId == 0 ? Part::BOTTOM : Part::TOP);
+	part = (deviceId == 0 ? BOTTOM : TOP);
 
-	if (part == Part::BOTTOM) {
+	if (part == BOTTOM) {
 		allocNumRows = MESH_SIZE_EXTENDED - (DIVISION_POINT - 1);
 	}
 	else {
@@ -211,12 +217,12 @@ void HybridCuda::launchCompute(float* temperature_in) {
 
 	try {
 		dim3 blockSize(BLOCK_DIM_X, BLOCK_DIM_Y);
-		auto computedGridDimX = (MESH_SIZE_EXTENDED + blockSize.x - 1) / blockSize.x;
-		auto computedGridDimY = (allocNumRows + blockSize.y - 1) / blockSize.y;
+		unsigned computedGridDimX = (MESH_SIZE_EXTENDED + blockSize.x - 1) / blockSize.x;
+		unsigned computedGridDimY = (allocNumRows + blockSize.y - 1) / blockSize.y;
 		dim3 gridSize(computedGridDimX, computedGridDimY);
 
 		float* srcPtr;
-		if (part == Part::BOTTOM) {
+		if (part == BOTTOM) {
 			srcPtr = reinterpret_cast<float*>(reinterpret_cast<char*>(temperature_in) + (DIVISION_POINT - 1) * pitch);
 		}
 		else {
@@ -240,7 +246,7 @@ void HybridCuda::finalizeCompute(float* temperature_out) {
 		checkCudaErrors(cudaDeviceSynchronize());// cudaDeviceSynchronize waits for the kernel to finish, and returns any errors encountered during the launch.
 
 		float *srcPtr, *dstPtr;
-		if (part == Part::BOTTOM) {
+		if (part == BOTTOM) {
 			dstPtr = reinterpret_cast<float*>(reinterpret_cast<char*>(temperature_out) + DIVISION_POINT * pitch);
 			srcPtr = reinterpret_cast<float*>(reinterpret_cast<char*>(d_temperature_out) + d_pitch);
 		}
@@ -263,7 +269,7 @@ void HybridCuda::copyInitial(float* temperature_in) {
 	setDevice();
 
 	float* srcPtr;
-	if (part == Part::BOTTOM) {
+	if (part == BOTTOM) {
 		srcPtr = reinterpret_cast<float*>(reinterpret_cast<char*>(temperature_in) + (DIVISION_POINT - 1) * pitch);
 	}
 	else {
@@ -279,7 +285,7 @@ void HybridCuda::copyFinal(float* temperature_out) {
 	setDevice();
 
 	float *srcPtr, *dstPtr;
-	if (part == Part::BOTTOM) {
+	if (part == BOTTOM) {
 		dstPtr = reinterpret_cast<float*>(reinterpret_cast<char*>(temperature_out) + DIVISION_POINT * pitch);
 		srcPtr = reinterpret_cast<float*>(reinterpret_cast<char*>(d_temperature_in) + d_pitch);
 	}

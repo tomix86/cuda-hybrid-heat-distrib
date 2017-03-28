@@ -24,7 +24,7 @@ void init(int argc, const char* argv[]) {
 	STEPS = std::atoi(argv[1]);
 	MESH_SIZE = std::atoi(argv[2]);
 	MESH_SIZE_EXTENDED = MESH_SIZE + 2;
-	std::cout << "Single Allocation size will be: " << sizeof(float) * MESH_SIZE * MESH_SIZE / (1024 * 1024) << "MiB" << std::endl;
+//	std::cout << "Single Allocation size will be: " << sizeof(float) * MESH_SIZE * MESH_SIZE / (1024 * 1024) << "MiB" << std::endl;
 	BLOCK_DIM_X = std::atoi(argv[4]);
 	BLOCK_DIM_Y = std::atoi(argv[5]);
 	CPU_SHARE = std::atof(argv[6]);
@@ -122,11 +122,13 @@ size_t runBenchmark() {
 	auto GPUShare = static_cast<float>(MESH_SIZE_EXTENDED - divisionPoint) / MESH_SIZE_EXTENDED; 
 	auto CPUShare = 1.f - GPUShare;
 
-	std::cout << std::setprecision(2) << "CPU: " << CPUShare << " GPU: " << GPUShare << '\n';
+//	std::cout << std::setprecision(2) << "CPU: " << CPUShare << " GPU: " << GPUShare << '\n';
 
 	return divisionPoint;
 }
 
+
+//https://stackoverflow.com/a/23179877
 void hybrid_nested_parallelism() {
 	static const size_t BATCH_SIZE = 100;
 	size_t pitch;
@@ -140,7 +142,7 @@ void hybrid_nested_parallelism() {
 	HybridCuda cuda(DIVISION_POINT, pitch, 0);
 
 	{
-		SimpleTimer t{ "Hybrid implementation" };
+		SimpleTimer t{ "Hybrid implementation nested parallelism" };
 		cuda.copyInitial(linearMesh_in);
 
 		for (int step = 0; step < STEPS; ++step) {
@@ -303,10 +305,11 @@ int main(int argc, const char* argv[]) {
 	setValidateResults(false);
 
 //	basic();
-//	optimized();
+	optimized();
 //	cuda();
-	hybrid();
+//	hybrid();
 //	hybrid_nested_parallelism();
+//	std::cout << std::endl;
 //	hybrid_cuda();
 
 	return 0;
